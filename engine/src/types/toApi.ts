@@ -1,0 +1,40 @@
+import { UserBalance } from "../trade/engine"
+import { Order } from "../trade/orderbook"
+
+export type MessageToApi = {
+    type: "ORDER_PLACED",
+    payload: {
+        orderId: string,
+        executedQty: number,
+        fills: {
+            price: number,
+            qty: number,
+            tradeId: number
+        }[]
+        
+    }
+} | {
+    type: "ORDER_CANCELLED",
+    payload: {
+        orderId: string,
+        executedQty: number,
+        remainingQty: number
+    }
+} | {
+    type : "OPEN_ORDERS",
+    payload : {
+        asks : Order[],
+        bids : Order[]
+    }
+} | {
+    type : "DEPTH",
+    payload : {
+        asks : [string,string][],
+        bids : [string,string][]
+    }
+} | {
+    type : "BALANCE",
+    payload : {
+        balances : UserBalance
+    }
+}
