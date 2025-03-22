@@ -6,10 +6,12 @@ import { klinesRouter } from "./routes/klines";
 import { tradesRouter } from "./routes/trades";
 import { tickerRouter } from "./routes/ticker";
 import { accountRouter } from "./routes/account";
+import { getClient } from "./utils";
 
 const app = express();
 app.use(cors())
 app.use(express.json());
+export const pgClient = getClient()
 
 app.use('/api/v1/depth', depthRouter)
 app.use('/api/v1/order', orderRouter)

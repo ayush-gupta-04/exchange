@@ -1,11 +1,12 @@
 export type MessageToDb = {
     type : "NEW_TRADE_ADDED",
     data : {
-        tradeId : string,
-        price : string,
-        quantity : string,
-        quoteQuantity : string,
-        timestamp : Date,
-        isBuyerMaker : Boolean
+        market : string,
+        tradeId : number,
+        price : number,
+        quantity : number,
+        quoteQuantity : number,
+        timeStamp : Date,
+        isBuyerMaker : boolean
     }
 }

@@ -223,21 +223,31 @@ export class Engine {
 
         const {fills , executedQty } = orderbook.addOrder(order);
         this.updateBalance(userId,baseAsset,quoteAsset,side,fills);
+        this.createDbTrades(fills,market,userId)
         this.publishWsDepthUpdates(fills,price,side,market,orderbook);
         this.publishWsTrades(fills,userId,market)
-        orderbook.cleanUp()
-        // this.createDbTrades(fills,market,userId)
+        orderbook.cleanUp()  
         return { executedQty, fills,  orderId : order.orderId}
 
     }
 
-    // createDbTrades(fills : Fill[] ,market : string, userId : string ){
-    //     fills.forEach(fill => {
-    //         RedisManager.getInstance().sendToDbQueue("db_processor" , {
+    createDbTrades(fills : Fill[] ,market : string, userId : string ){
+        fills.forEach(fill => {
+            RedisManager.getInstance().sendToDbQueue("db_processor" , {
+                type : "NEW_TRADE_ADDED",
+                data : {
+                    market : market,
+                    tradeId : fill.tradeId,
+                    price : fill.price,
+                    quantity : fill.qty,
+                    quoteQuantity : (fill.qty * fill.price),
+                    timeStamp : new Date(),
+                    isBuyerMaker : fill.otherUserId == userId
+                }
                 
-    //         })
-    //     })
-    // }
+            })
+        })
+    }
 
     publishWsTrades(fills: Fill[], userId: string, market: string) {
         fills.forEach(fill => {
