@@ -30,4 +30,15 @@ export type MessageFromApi = {
     data : {
         userId : string
     }
+} | {
+    type : "ADD_USER",
+    data : {
+        user_id : string
+    }
+} | {
+    type : "ADD_MARKET",
+    data : {
+        baseAsset : string,
+        quoteAsset : string
+    }
 }

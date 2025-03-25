@@ -16,4 +16,14 @@ export type MessageToWs = {
         s: string,
         T : Date
     }
+} | {
+    stream : string,
+    data : {
+        e : "bookTicker",
+        s : string,
+        a : string,   //best ask price
+        A : string,   //best ask qty
+        b : string,
+        B : string
+    }
 }

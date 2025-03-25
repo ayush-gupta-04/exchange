@@ -1,16 +1,20 @@
 //if i place an order...and my half qty is filled by orderId = 2....and i ate whole qty of orderId = 2....the orderId = 2 will be removed from the orderBook.
 //how will the person with orderId = 2 will know ki uska pura filled ho gya tha. ????
 
+import { ORDER_STATUS } from "../types";
 
 //Check if the user itself doesn't trade with himself
 export interface Order {
-    price: number;
-    quantity: number;
-    orderId: string;
-    filled: number;    //The current quantity of this order is quantity - filled.
-    side: "buy" | "sell";
-    userId: string;
+    orderId : string,
+    userId : string,
+    price : number,
+    quantity : number,
+    side : "buy" | "sell",
+    filled: number,
+    time : Date,
+    status : ORDER_STATUS
 }
+
 
 export interface Fill {
     price: number;
@@ -18,6 +22,7 @@ export interface Fill {
     tradeId: number;
     otherUserId: string;
     markerOrderId: string;
+    otherOrderStatus : ORDER_STATUS
 }
 
 
@@ -95,8 +100,9 @@ export class OrderBook {
 
     addOrder(order : Order) : {fills : Fill[] , executedQty : number}{
         if(order.side == "buy"){
-            const {fills,executedQty} = this.match_BidsToAsks(order);
+            const {fills,executedQty} = this.match_buyToAsks(order);
             order.filled = executedQty;
+            order.status = executedQty == 0?"new":executedQty == order.quantity?"filled":"partially_filled"
             if(executedQty == order.quantity){
                 return {
                     fills,
@@ -109,7 +115,7 @@ export class OrderBook {
                 executedQty
             }
         }else{
-            const {executedQty, fills} = this.match_AsksToBids(order);
+            const {executedQty, fills} = this.match_sellToBids(order);
             order.filled = executedQty;
             if (executedQty === order.quantity) {
                 return {
@@ -131,31 +137,26 @@ export class OrderBook {
     //Order will be matched starting from the best to worst asks.
     //Least asks is the best asks.
     //so, Sort in ascending order....start from first.
-    match_BidsToAsks(order : Order) : {fills : Fill[] , executedQty : number}{
+    match_buyToAsks(order : Order) : {fills : Fill[] , executedQty : number}{
         const fills : Fill[] = [];
         let executedQty : number = 0;
         this.asks.sort((o1,o2) => o1.price - o2.price);
-         //TODO : Don't let the user trade with himself .... done
         for(let i = 0; i < this.asks.length ; i++){
-            if(this.asks[i].price <= order.price && order.quantity > executedQty && order.userId != this.asks[i].userId){
+            if(this.asks[i].price <= order.price && order.quantity > executedQty){
                 const remainingQty = order.quantity - executedQty;
-                const filledQty = Math.min( remainingQty , this.asks[i].quantity);
+                const filledQty = Math.min( remainingQty , this.asks[i].quantity - this.asks[i].filled);
                 executedQty += filledQty;
-                this.asks[i].filled += filledQty
+                this.asks[i].filled += filledQty;
+                this.asks[i].status = this.asks[i].filled == this.asks[i].quantity?"filled":"partially_filled"
                 fills.push({
                     price : this.asks[i].price,
                     qty : filledQty,
-                    tradeId : this.lastTradeId++,
+                    tradeId : ++this.lastTradeId,
                     otherUserId : this.asks[i].userId,
-                    markerOrderId : this.asks[i].orderId
+                    markerOrderId : this.asks[i].orderId,
+                    otherOrderStatus : this.asks[i].status
                 })
-
-                //don't do it right now. do this after i have updated the ws server
-                //since this order was removed from the orderBook . . how will that person know kii uska order fill ho gya.
-                // if(this.asks[i].filled == this.asks[i].quantity){
-                //     this.asks.splice(i,1);
-                //     i--;
-                // }
+                
             }else{
                 break;
             }
@@ -172,31 +173,26 @@ export class OrderBook {
     //Order will be matched starting from the best to worst bids.
     //highest bids is the best bids.
     //so, Sort in descending order....start from first.
-    match_AsksToBids(order : Order) : {fills : Fill[] , executedQty : number}{
+    match_sellToBids(order : Order) : {fills : Fill[] , executedQty : number}{
         const fills : Fill[] = []
         let executedQty : number = 0;
         this.bids.sort((o1,o2) => o2.price - o1.price);
-         //TODO : Don't let the user trade with himself.....done
         for(let i = 0 ; i < this.bids.length ; i++){
-            if(this.bids[i].price >= order.price && order.quantity > executedQty && order.userId != this.bids[i].userId){
+            if(this.bids[i].price >= order.price && order.quantity > executedQty){
                 const remainingQty = order.quantity - executedQty;
-                const filledQty = Math.min( remainingQty , this.bids[i].quantity);
+                const filledQty = Math.min( remainingQty , this.bids[i].quantity - this.bids[i].filled);
                 executedQty += filledQty
-                this.bids[i].filled += filledQty
+                this.bids[i].filled += filledQty;
+                this.bids[i].status = this.bids[i].filled == this.bids[i].quantity?"filled":"partially_filled"
                 fills.push({
                     price : this.bids[i].price,
                     qty : filledQty,
-                    tradeId : this.lastTradeId++,
+                    tradeId : ++this.lastTradeId,
                     otherUserId : this.bids[i].userId,
-                    markerOrderId : this.bids[i].orderId
+                    markerOrderId : this.bids[i].orderId,
+                    otherOrderStatus : this.bids[i].status
                 })
-
-                //don't do it right now. do this after i have updated the ws server
-                //since this order was removed from the orderBook . . how will that person know kii uska order fill ho gya.
-                // if(this.bids[i].filled == this.bids[i].quantity){
-                //     this.bids.splice(i,1);
-                //     i--;
-                // }
+                
             }
         }
         return {
@@ -211,6 +207,7 @@ export class OrderBook {
         if(index != -1){
             this.bids.splice(index,1);
         }
+        
     }
     cancelAsk(orderId : string){
         const index = this.asks.findIndex(a => a.orderId == orderId)
@@ -220,15 +217,46 @@ export class OrderBook {
     }
     cleanUp(){
         for(let i = 0; i < this.asks.length ; i++){
-            if(this.asks[i].quantity == this.asks[i].filled){
+            if(this.asks[i].status == "cancelled" || this.asks[i].status == "filled"){
                 this.asks.splice(i,1);
                 i--;
             }
         }
         for(let i = 0; i < this.bids.length ; i++){
-            if(this.bids[i].quantity == this.bids[i].filled){
+            if(this.bids[i].status == "cancelled" || this.bids[i].status == "filled"){
                 this.bids.splice(i,1);
                 i--;
+            }
+        }
+    }
+    getBestBidsAsks(side : "buy" | "sell") : {bid : {price : number,qty : number} , ask : {price : number,qty : number}}{
+        if(side == 'buy'){
+            //best asks --> top of asks;
+            //best bids --> top of bids after sorting.
+            this.bids.sort((o1,o2) => o2.price - o1.price);
+            return {
+                bid : {
+                        price : this.bids.length == 0 ? 0 : this.bids[0].price,
+                        qty : this.bids.length == 0 ? 0 : this.bids[0].quantity - this.bids[0].filled,
+                },
+                ask : {
+                        price : this.asks.length == 0 ? 0 : this.asks[0].price,
+                        qty : this.asks.length == 0 ? 0 : this.asks[0].quantity - this.asks[0].filled
+                }
+            }
+        }else{
+            //best asks --> top of asks after sorting;
+            //best bids --> top of bids;
+            this.asks.sort((o1,o2) => o1.price - o2.price);
+            return {
+                bid : {
+                        price : this.bids.length == 0 ? 0 : this.bids[0].price,
+                        qty : this.bids.length == 0 ? 0 : this.bids[0].quantity - this.bids[0].filled,
+                },
+                ask : {
+                        price : this.asks.length == 0 ? 0 : this.asks[0].price,
+                        qty : this.asks.length == 0 ? 0 : this.asks[0].quantity - this.asks[0].filled
+                }
             }
         }
     }

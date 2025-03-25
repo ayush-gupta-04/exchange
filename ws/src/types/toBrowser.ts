@@ -15,4 +15,14 @@ export type OutgoingMessage = {
         q: number,
         s: string,
     }
+} | {
+    stream : string,
+    data : {
+        e : "bookTicker",
+        s : string,
+        a : string,   //best ask price
+        A : string,   //best ask qty
+        b : string,
+        B : string
+    }
 }

@@ -37,4 +37,16 @@ export type MessageToApi = {
     payload : {
         balances : UserBalance
     }
+} | {
+    type : "USER_CREATED",
+    payload : {
+        success : boolean,
+        message : string
+    }
+} | {
+    type : "MARKET_ADDED",
+    payload : {
+        success : boolean,
+        message : string
+    }
 }

@@ -18,7 +18,7 @@ orderRouter.post('/',async (req,res) => {
     res.json(response.payload);
 })
 
-orderRouter.get('/open',async (req,res) => {
+orderRouter.get('/',async (req,res) => {
     const {market , userId} = req.body;
     const response = await RedisManager.getInstance().sendAndAwait({
         type : "GET_OPEN_ORDERS",

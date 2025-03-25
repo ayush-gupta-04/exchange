@@ -29,4 +29,15 @@ export type MessageToEngine = {
     data : {
         userId : string
     }
+} | {
+    type : "ADD_MARKET",
+    data : {
+        baseAsset : string,
+        quoteAsset : string
+    }
+} | {
+    type : "ADD_USER",
+    data : {
+        user_id : string
+    }
 }

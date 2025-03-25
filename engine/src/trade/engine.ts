@@ -17,47 +17,50 @@ export interface UserBalance {
 }
 
 export class Engine {
-    private orderbooks : OrderBook[] = [];
-    private balances: Map<string, UserBalance> = new Map();
+    private orderbooks : OrderBook[];
+    private balances: Map<string, UserBalance>;
 
 
     constructor(){
-        this.orderbooks = [new OrderBook('SOL','USDC',[],[],0,0)]
-        this.setBaseBalance();
+        this.orderbooks = [new OrderBook('SOL','USDC',[],[],0,0)];
+        this.balances = new Map();
+        this.setBaseBalances();
     }
 
-    setBaseBalance(){
-        this.balances.set("1",{
+    setBaseBalances(){
+        this.balances.set('1',{
             ["SOL"] : {
-                available : 200,
+                available : 400,
                 locked : 0
             },
             ["USDC"] : {
-                available : 1000,
+                available : 50000,
                 locked : 0
             }
         })
-        this.balances.set("2",{
+        this.balances.set('2',{
             ["SOL"] : {
-                available : 200,
+                available : 400,
                 locked : 0
             },
             ["USDC"] : {
-                available : 1000,
+                available : 50000,
                 locked : 0
             }
         })
-        this.balances.set("3",{
+        this.balances.set('3',{
             ["SOL"] : {
-                available : 200,
+                available : 400,
                 locked : 0
             },
             ["USDC"] : {
-                available : 1000,
+                available : 50000,
                 locked : 0
             }
         })
     }
+
+    
     process({ message, clientId } : {message: MessageFromApi, clientId: string}){
         switch (message.type) {
             case "CREATE_ORDER":
@@ -179,9 +182,47 @@ export class Engine {
                 }
 
                 break;
+
+            case "ADD_USER" : 
+                this.createUser(message.data.user_id);
+                RedisManager.getInstance().sendToApi(clientId,{
+                    type : "USER_CREATED",
+                    payload : {
+                        success : true,
+                        message : "User created successfully !"
+                    }
+                })
+                break;
+            case "ADD_MARKET" : 
+                const {baseAsset,quoteAsset} = message.data;
+                this.createOrderbook(baseAsset,quoteAsset);
+                RedisManager.getInstance().sendToApi(clientId,{
+                    type : "MARKET_ADDED",
+                    payload : {
+                        success : true,
+                        message : `${baseAsset}_${quoteAsset} Market added successfully !`
+                    }
+                })
             default:
                 break;
         }
+    }
+
+    createOrderbook(baseAsset : string,quoteAsset : string){
+        this.orderbooks.push(new OrderBook(baseAsset,quoteAsset,[],[],0,0));
+        console.log(this.orderbooks)
+    }
+    createUser(userId : string){
+        this.balances.set(userId,{
+            ["SOL"] : {
+                available : 400,
+                locked : 0
+            },
+            ["USDC"] : {
+                available : 50000,
+                locked : 0
+            }
+        })
     }
 
     
@@ -208,43 +249,93 @@ export class Engine {
         const quoteAsset = orderbook.quoteAsset;
 
         //Lock the funds before any trade happens.
-        //If it throws an error then it will be catched above.....do don't worry buddy.
+        //If it throws an error then it will be catched above.....so don't worry buddy.
         this.LockFunds(baseAsset,quoteAsset,quantity,price,side,userId)
 
         //now create an initial order .. then go on to add that order in orderbook
         const order: Order = {
+            orderId : uuid(),
+            userId,
             price,
             quantity,
-            orderId : uuid(),
-            filled: 0,
             side,
-            userId
+            filled: 0,
+            time : new Date(),
+            status : "new"
         }
 
         const {fills , executedQty } = orderbook.addOrder(order);
         this.updateBalance(userId,baseAsset,quoteAsset,side,fills);
-        this.createDbTrades(fills,market,userId)
+        this.createDbOrders(order,market);
+        this.updateDbOrders(fills);
+        this.createDbTrades(fills,market,userId,side);        
         this.publishWsDepthUpdates(fills,price,side,market,orderbook);
-        this.publishWsTrades(fills,userId,market)
-        orderbook.cleanUp()  
-        return { executedQty, fills,  orderId : order.orderId}
-
+        this.publishWsTrades(fills,userId,market);
+        orderbook.cleanUp();
+        this.publishWsBookTickerUpdates(side,orderbook,market);
+        return { executedQty, fills,  orderId : order.orderId};
     }
 
-    createDbTrades(fills : Fill[] ,market : string, userId : string ){
+    publishWsBookTickerUpdates(side : "buy" | "sell",orderbook : OrderBook,market : string){
+        const {bid,ask}  = orderbook.getBestBidsAsks(side);
+        RedisManager.getInstance().publishToWs(`bookTicker@${market}`,{
+            stream : `bookTicker@${market}`,
+            data : {
+                e : "bookTicker",
+                s : market,
+                a : ask.price.toString(),
+                A : ask.qty.toString(),
+                b : bid.price.toString(),
+                B : bid.qty.toString()
+            }
+        })
+    }
+
+    createDbOrders(order : Order,market : string){
+        RedisManager.getInstance().sendToDbQueue('db_processor',{
+            type : "CREATE_DB_ORDER",
+            data : {
+                order_id : order.orderId,
+                symbol : market,
+                user_id : order.userId,
+                time : order.time,
+                price : order.price,
+                qty : order.quantity,
+                filled : order.filled,
+                status : order.status,
+                side  : order.side
+            }
+        })
+    }
+
+    updateDbOrders(fills : Fill[]){
+        fills.forEach(fill => {
+            RedisManager.getInstance().sendToDbQueue('db_processor',{
+                type : "UPDATE_DB_ORDER",
+                data : {
+                    order_id : fill.markerOrderId,
+                    qty : fill.qty,
+                    status : fill.otherOrderStatus
+                }
+            })
+        })
+    }
+
+    createDbTrades(fills : Fill[] ,market : string, userId : string ,side : "buy" | "sell"){
         fills.forEach(fill => {
             RedisManager.getInstance().sendToDbQueue("db_processor" , {
-                type : "NEW_TRADE_ADDED",
+                type : "CREATE_DB_TRADE",
                 data : {
-                    market : market,
                     tradeId : fill.tradeId,
+                    time : new Date(),
+                    market : market,
                     price : fill.price,
                     quantity : fill.qty,
                     quoteQuantity : (fill.qty * fill.price),
-                    timeStamp : new Date(),
-                    isBuyerMaker : fill.otherUserId == userId
+                    is_buyer_maker : fill.otherUserId == userId,
+                    buyer_id : side == "buy" ?userId:fill.otherUserId,
+                    seller_id : side == 'sell'?userId:fill.otherUserId
                 }
-                
             })
         })
     }
@@ -399,10 +490,85 @@ export class Engine {
         this.updateBalance_cancelled(open_order , quoteAsset, baseAsset);
         if(open_order.side == 'buy'){
             orderbook.cancelBid(orderId);
+            this.updateDbOrders_cancelled(orderId);
+            this.publishWsDepthUpdates_cancelled(open_order.price,orderbook,"buy",market);
+            //for bookTicker --> the bids and the asks will always be sorted in any case.
+            //just pick the top one.
+            this.publishBookTickerUpdated_cancelled(orderbook,market)
         }else{
             orderbook.cancelAsk(orderId);
+            this.updateDbOrders_cancelled(orderId);
+            this.publishWsDepthUpdates_cancelled(open_order.price,orderbook,"sell",market);
+            //for bookTicker --> the bids and the asks will always be sorted in any case.
+            //just pick the top one.
+            this.publishBookTickerUpdated_cancelled(orderbook,market)
         }
         return {cancelled_order : open_order}
+    }
+
+
+    publishBookTickerUpdated_cancelled(orderbook : OrderBook , market : string){
+        const bid = {
+            price : orderbook.bids.length == 0 ? 0 : orderbook.bids[0].price,
+            qty : orderbook.bids.length == 0 ? 0 : orderbook.bids[0].quantity - orderbook.bids[0].filled,
+        }
+        const ask = {
+            price : orderbook.asks.length == 0 ? 0 : orderbook.asks[0].price,
+            qty : orderbook.asks.length == 0 ? 0 : orderbook.asks[0].quantity - orderbook.asks[0].filled,
+        }
+        RedisManager.getInstance().publishToWs(`bookTicker@${market}`,{
+            stream : `bookTicker@${market}`,
+            data : {
+                e : 'bookTicker',
+                s : market,
+                a : ask.price.toString(),
+                A : ask.qty.toString(),
+                b : bid.price.toString(),
+                B : bid.qty.toString()
+            }
+        })
+    }
+    publishWsDepthUpdates_cancelled(price : number,orderbook : OrderBook,side : "buy" | "sell",market : string){
+        const depth = orderbook.getDepths();
+        if(side == "buy"){
+            //this cancelled_order was on the bids.
+            //in bids : ye order jis price m place hua hoga usi price m change aaya hoga.
+            //in asks : no change.
+            const updatedBids = depth.bids.find(b => Number(b[0]) == price)
+            RedisManager.getInstance().publishToWs(`depth@${market}`,{
+                stream : `depth@${market}`,
+                data : {
+                    e : "depth",
+                    a : [],
+                    b : updatedBids ? [updatedBids] : [[price.toString(),'0']]
+                }
+            })
+        }else{
+            //this cancelled_order was on the asks.
+            //in asks : ye order jis price m place hua hoga usi price m change aaya hoga.
+            //in bids : no change.
+            const updatedAsks = depth.asks.find(b => Number(b[0]) == price)
+            RedisManager.getInstance().publishToWs(`depth@${market}`,{
+                stream : `depth@${market}`,
+                data : {
+                    e : "depth",
+                    a : updatedAsks ? [updatedAsks] : [[price.toString(),'0']],
+                    b : []
+                }
+            })
+        }
+        
+    }
+
+    updateDbOrders_cancelled(orderId : string){
+        RedisManager.getInstance().sendToDbQueue('db_processor',{
+            type : "UPDATE_DB_ORDER",
+            data : {
+                order_id : orderId,
+                qty : 0,
+                status : 'cancelled'
+            }
+        })
     }
 
     updateBalance_cancelled(open_order : Order , quoteAsset : string,baseAsset : string){

@@ -54,4 +54,16 @@ export type MessageFromEngine = {
             }
         }
     }
+} | {
+    type : "MARKET_ADDED",
+    payload : {
+        success : boolean,
+        message : string
+    }
+} | {
+    type : "USER_CREATED",
+    payload : {
+        success : boolean,
+        message : string
+    }
 }
