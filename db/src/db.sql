@@ -80,7 +80,7 @@ SELECT add_continuous_aggregate_policy('one_min_candle',
 -- METHOD 1 -> use of distinct on (symbol).
 -- Distinct on --> It will Only Select the first row for each unique value (as determined by the specified column(s)).
 --             --> Always used With order by (Must be the first to be ordered).
---             --> Use it if you want to select a first row for each distinct values of a specified column.
+--             --> Use it if you want to select first row for each distinct values of a specified column.
 --             --> ex. I wanted the latest one_day_candle for every distinct symbol.
 
 -- With as (sql query) select --> It helps to perform some further operations on a temporary result.

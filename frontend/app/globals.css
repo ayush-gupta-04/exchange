@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme{
+  --color-base-background-dark : #0e0f14;
+  --color-base-background-light : #14151b;
+  --color-base-background-light2 : #202127;
+  --color-base-hover : #202127;
+  --color-base-text-white : #EDEBEF;
+}
+* {
+  scrollbar-color: #22232d #0e0f14; /* thumb color and track color */
+  scrollbar-width: thin; /* makes the scrollbar smaller */
+}
