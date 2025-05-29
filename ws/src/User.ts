@@ -37,7 +37,7 @@ export class User {
     private closeListener(){
         this.ws.on("close", () => {
             UserManager.getInstance().deleteUser(this.userId);
-            console.log(this.userId + "   userId deleted")
+            console.log(this.userId + "   userId deleted");
             SubscriptionManager.getInstance().leftUser(this.userId);
         });
     }

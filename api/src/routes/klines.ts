@@ -1,6 +1,6 @@
 import {Router} from "express"
 import { KlineData } from "../types/db";
-import { pgClient } from "..";
+import { createPool } from "../utils";
 
 export const klinesRouter = Router();
 
@@ -35,6 +35,7 @@ klinesRouter.get('/',async (req,res) => {
             break;
     }
     try {
+        const pgClient = createPool();
         const {rows} : {rows : KlineData[]}= await pgClient.query(query ,values);
         const mappedKlines = rows.map(data => {
             let end_time : Date;
@@ -56,15 +57,15 @@ klinesRouter.get('/',async (req,res) => {
                 break;
             }
             return {
-                close: data.close.toString(),
-                end: end_time,
-                high: data.high.toString(),
-                low: data.low.toString(),
-                open: data.open.toString(),
-                quoteVolume: data.quotevolume.toString(),
-                start: data.bucket,
-                trades: data.trades.toString(),
-                volume: data.volume.toString()
+                "close": data.close.toString(),
+                "end": end_time,
+                "high": data.high.toString(),
+                "low": data.low.toString(),
+                "open": data.open.toString(),
+                "quoteVolume": data.quotevolume.toString(),
+                "start": data.bucket,
+                "trades": data.trades.toString(),
+                "volume": data.volume.toString()
             }
         })
         res.json(mappedKlines)

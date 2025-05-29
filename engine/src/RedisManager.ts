@@ -10,7 +10,7 @@ export class RedisManager {
     private constructor(){
         this.client = createClient();
         this.client.connect();
-        console.log("redis connected !")
+        console.log("redis connected !");
     }
 
     public static getInstance() {

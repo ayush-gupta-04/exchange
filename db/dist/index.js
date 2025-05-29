@@ -14,9 +14,9 @@ const utils_1 = require("./utils");
 //1. Always use like this pgClient.query(query,values).....it will ensure the correct datatypes + ensures no SQL injection.
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        const pgClient = yield (0, utils_1.getClient)();
         const redis = (0, redis_1.createClient)();
         try {
+            const pgClient = (0, utils_1.createPool)();
             yield redis.connect();
             console.log("redis connected !");
             while (true) {
@@ -24,17 +24,17 @@ function main() {
                 if (dataFromEngine) {
                     const { type, data } = JSON.parse(dataFromEngine.element);
                     if (type == 'CREATE_DB_TRADE') {
-                        const { tradeId, time, market, price, quantity, quoteQuantity, is_buyer_maker, buyer_id, seller_id } = data;
+                        const { trade_id, time, market, price, quantity, is_buyer_maker, buyer_id, seller_id, } = data;
                         console.log(data);
                         try {
                             //pushing to trades.
                             const trade_query = `
-                                INSERT INTO crypto_trades (trade_id, symbol,time, price, qty, quote_qty, is_buyer_maker,seller_id,buyer_id)
+                                INSERT INTO crypto_trades (trade_id, symbol,time, price, qty, is_buyer_maker,seller_id,buyer_id,quote_qty)
                                 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9);
                             `;
-                            const trade_values = [tradeId, market, time, price, quantity, quoteQuantity, is_buyer_maker, seller_id, buyer_id];
+                            const trade_values = [trade_id, market, time, price, quantity, is_buyer_maker, seller_id, buyer_id, parseFloat((price * quantity).toFixed(2))];
                             yield pgClient.query(trade_query, trade_values);
-                            console.log(" Order Data inserted successfully !");
+                            console.log(" Trade Data inserted successfully !");
                         }
                         catch (error) {
                             console.log(error);
@@ -52,7 +52,7 @@ function main() {
                             `;
                             const values = [order_id, symbol, user_id, price, qty, filled, status, time, side];
                             yield pgClient.query(query, values);
-                            console.log(" Order Data inserted successfully !");
+                            console.log(" Order Data inserted successfully !  for user : " + user_id);
                         }
                         catch (error) {
                             console.log(error);

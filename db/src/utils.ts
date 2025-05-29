@@ -1,19 +1,14 @@
-import {Client} from 'pg';
+import { Pool } from 'pg';
 
-
-export async function getClient(){
-    const client = new Client({
-        user : "postgres",
-        password : "secret",
-        host : "localhost",
-        port : 5432,
-        database : "newdb"
+export function createPool(){
+    const pool = new Pool({
+        user: "postgres",
+        host: "localhost",
+        database: "newdb",
+        password: "secret",
+        port: 5432,
+        max: 100, // Set max connections
+        idleTimeoutMillis : 10000 
     })
-    try {
-        await client.connect();
-        console.log("Connected to mydb!")
-    } catch (error) {
-        console.log('Connection Error ' + error)
-    }
-    return client;
-} 
+    return pool
+}

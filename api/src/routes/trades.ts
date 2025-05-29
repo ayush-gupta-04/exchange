@@ -1,6 +1,6 @@
 import {Router} from "express"
 import { TradesData } from "../types/db";
-import { pgClient } from "..";
+import { createPool } from "../utils";
 
 
 
@@ -18,31 +18,35 @@ tradesRouter.get('/',async (req,res) => {
             message : "Invalid symbol and limit"
         })
     }
-    try {
-        const query = `
-            SELECT * 
-            FROM crypto_trades
-            WHERE symbol = $1
-            ORDER BY trade_id DESC
-            LIMIT $2
-        `
-        const value = [symbol,limit]
-        const {rows} : {rows : TradesData[]}= await pgClient.query(query,value);
-        const mappedData = rows.map(t => {
-            return {
-                id: t.trade_id,
-                isBuyerMaker: t.is_buyer_maker,
-                price: t.price.toString(),
-                quantity: t.quantity.toString(),
-                quoteQuantity: t.quote_quantity.toString(),
-                timestamp: t.time.getTime()
-            }
-        })
-        res.json(mappedData)
-    } catch (error) {
-        res.json({
-            success : false,
-            message : "Error occured !"
-        })
+    else{
+            try {
+            const pgClient = createPool();
+            const query = `
+                SELECT trade_id,time,price,qty,quote_qty,is_buyer_maker
+                FROM crypto_trades
+                WHERE symbol = $1
+                ORDER BY trade_id DESC
+                LIMIT $2
+            `
+            const value = [symbol,limit]
+            const {rows} : {rows : TradesData[]}= await pgClient.query(query,value);
+            const mappedData = rows.map(t => {
+                return {
+                    "id": t.trade_id,
+                    "isBuyerMaker": t.is_buyer_maker,
+                    "price": t.price.toString(),
+                    "quantity": t.qty.toString(),
+                    "quoteQuantity": t.quote_qty.toString(),
+                    "timestamp": t.time.getTime()
+                }
+            })
+            res.json(mappedData)
+        } catch (error) {
+            console.log(error)
+            res.json({
+                success : false,
+                message : "Error occured !"
+            })
+        }
     }
 })

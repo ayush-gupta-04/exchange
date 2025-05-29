@@ -93,10 +93,10 @@ WITH ticker_trades AS (
 		MAX(price) AS high,
 		LAST(price,time) AS lastPrice,
 		MIN(price) AS low,
-		SUM(quote_quantity) AS quoteVolume,
+		SUM(quote_qty) AS quoteVolume,
 		symbol,
 		COUNT(*) AS trades,
-		SUM(quantity) AS volume
+		SUM(qty) AS volume
 	FROM crypto_trades
 	GROUP BY bucket,symbol
 	ORDER BY symbol,bucket DESC

@@ -47,7 +47,16 @@ export class OrderBook {
     ticker() {
         return `${this.baseAsset}_${this.quoteAsset}`;
     }
-
+    getSnapshot() {
+        return {
+            quoteAsset : this.quoteAsset,
+            baseAsset: this.baseAsset,
+            bids: this.bids,
+            asks: this.asks,
+            lastTradeId: this.lastTradeId,
+            currentPrice: this.currentPrice
+        }
+    }
 
     getOpenOrders(userId : string){
         const asks = this.asks.filter((order) => order.userId == userId)
@@ -75,7 +84,7 @@ export class OrderBook {
             if(!bids_obj[price]){
                 bids_obj[price] = 0;
             }
-            bids_obj[price] = bids_obj[price] + (order.quantity - order.filled);
+            bids_obj[price] = bids_obj[price] + order.quantity - order.filled
         })
 
         this.asks.forEach((order) => {
@@ -85,7 +94,7 @@ export class OrderBook {
             if(!asks_obj[price]){
                 asks_obj[price] = 0;
             }
-            asks_obj[price] = asks_obj[price] + (order.quantity - order.filled);
+            asks_obj[price] = asks_obj[price] + order.quantity - order.filled;
         })
 
         for(const price in bids_obj){
@@ -102,7 +111,8 @@ export class OrderBook {
         if(order.side == "buy"){
             const {fills,executedQty} = this.match_buyToAsks(order);
             order.filled = executedQty;
-            order.status = executedQty == 0?"new":executedQty == order.quantity?"filled":"partially_filled"
+            const status = executedQty == 0?"new":executedQty == order.quantity?"filled":"partially_filled";
+            order.status = status;
             if(executedQty == order.quantity){
                 return {
                     fills,
@@ -117,6 +127,8 @@ export class OrderBook {
         }else{
             const {executedQty, fills} = this.match_sellToBids(order);
             order.filled = executedQty;
+            const status = executedQty == 0?"new":executedQty == order.quantity?"filled":"partially_filled";
+            order.status = status;
             if (executedQty === order.quantity) {
                 return {
                     executedQty,
@@ -145,8 +157,8 @@ export class OrderBook {
             if(this.asks[i].price <= order.price && order.quantity > executedQty){
                 const remainingQty = order.quantity - executedQty;
                 const filledQty = Math.min( remainingQty , this.asks[i].quantity - this.asks[i].filled);
-                executedQty += filledQty;
-                this.asks[i].filled += filledQty;
+                executedQty = executedQty +  filledQty;
+                this.asks[i].filled = this.asks[i].filled + filledQty;
                 this.asks[i].status = this.asks[i].filled == this.asks[i].quantity?"filled":"partially_filled"
                 fills.push({
                     price : this.asks[i].price,
@@ -180,9 +192,9 @@ export class OrderBook {
         for(let i = 0 ; i < this.bids.length ; i++){
             if(this.bids[i].price >= order.price && order.quantity > executedQty){
                 const remainingQty = order.quantity - executedQty;
-                const filledQty = Math.min( remainingQty , this.bids[i].quantity - this.bids[i].filled);
-                executedQty += filledQty
-                this.bids[i].filled += filledQty;
+                const filledQty = Math.min( remainingQty ,this.bids[i].quantity - this.bids[i].filled);
+                executedQty = executedQty +  filledQty
+                this.bids[i].filled = this.bids[i].filled + filledQty;
                 this.bids[i].status = this.bids[i].filled == this.bids[i].quantity?"filled":"partially_filled"
                 fills.push({
                     price : this.bids[i].price,

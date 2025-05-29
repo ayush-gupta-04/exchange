@@ -18,7 +18,7 @@ export type MessageToApi = {
     payload: {
         orderId: string,
         executedQty: number,
-        remainingQty: number
+        remainingQty: number,
     }
 } | {
     type : "OPEN_ORDERS",
@@ -47,6 +47,24 @@ export type MessageToApi = {
     type : "MARKET_ADDED",
     payload : {
         success : boolean,
+        message : string
+    }
+} | {
+    type: "CANCEL_ORDER_FAILED",
+    payload: {
+        executedQty: number,
+        remainingQty: number,
+        message : string
+    }
+} | {
+    type : "BOT_ADDED",
+    payload : {
+        success : boolean,
+        message : string
+    }
+} | {
+    type: "ORDER_FAILED",
+    payload: {
         message : string
     }
 }

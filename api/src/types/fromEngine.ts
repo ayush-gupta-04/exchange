@@ -20,22 +20,8 @@ export type MessageFromEngine = {
 } | {
     type : "OPEN_ORDERS",
     payload : {
-        asks : {
-            price: number;
-            quantity: number;
-            orderId: string;
-            filled: number; 
-            side: "buy" | "sell";
-            userId: string;
-        }[],
-        bids : {
-            price: number;
-            quantity: number;
-            orderId: string;
-            filled: number; 
-            side: "buy" | "sell";
-            userId: string;
-        }[]
+        asks : Order[],
+        bids : Order[]
     }
 } | {
     type: "ORDER_CANCELLED",
@@ -66,4 +52,35 @@ export type MessageFromEngine = {
         success : boolean,
         message : string
     }
+} | {
+    type: "CANCEL_ORDER_FAILED",
+    payload: {
+        executedQty: number,
+        remainingQty: number,
+        message : string
+    }
+} | {
+    type : "BOT_ADDED",
+    payload : {
+        success : boolean,
+        message : string
+    }
+} | {
+    type : "ORDER_FAILED",
+    payload : {
+        message : string
+    }
 }
+
+
+interface Order {
+    orderId : string,
+    userId : string,
+    price : number,
+    quantity : number,
+    side : "buy" | "sell",
+    filled: number,
+    time : Date,
+    status : ORDER_STATUS
+}
+type ORDER_STATUS = "new" | "filled" | "cancelled" | "partially_filled";

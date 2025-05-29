@@ -1,0 +1,19 @@
+1. focus , outline and ring.
+    -> In Input box -> 
+    ->     -> we have focus
+    ->     -> default is focus:outline ... we must disable it to apply our own ring.
+    -> Do : focus:outline-hidden
+    -> Now enable the ring.
+    ->     ->  Do : focus:ring-color focus:ring-2
+
+    -> In normal div -> 
+    ->     -> we have focus-within
+    -> To have the ring.
+    ->     -> Do : focus-within:ring-color focus-within:ring-2
+
+
+2. The http : 
+    -> If early returning by re.json(). Do write return after it.
+    -> Do's : res.json({message : "hello"});
+    ->        return;
+    -> Don't : return res.json({message : "hello"})

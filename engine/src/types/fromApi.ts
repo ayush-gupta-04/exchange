@@ -41,4 +41,13 @@ export type MessageFromApi = {
         baseAsset : string,
         quoteAsset : string
     }
+} | {
+    type : "ADD_BOT",
+    data : {
+        bot_id : string,
+        baseQty : number,
+        quoteQty : number,
+        baseAsset : string,
+        quoteAsset : string
+    }
 }

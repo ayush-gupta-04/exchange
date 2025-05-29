@@ -12,11 +12,10 @@ export type KlineData = {
 
 export type TradesData = {
     trade_id: number,
-    symbol: string,
     time: Date,
     price: number,
-    quantity: number,
-    quote_quantity: number,
+    qty: number,
+    quote_qty: number,
     is_buyer_maker: false
 }
 export type TickerData = {

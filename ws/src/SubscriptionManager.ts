@@ -14,7 +14,7 @@ export class SubscriptionManager {
         this.redisClient = createClient();
         try {   
             this.redisClient.connect();
-            console.log("Redis connected")
+            console.log("Redis connected");
         } catch (error) {
             console.log("Error while connecting to redis !")
         }
@@ -50,7 +50,6 @@ export class SubscriptionManager {
             })
         }
         console.log(this.subscriptions);
-        console.log(this.reverseSubscription)
     }
 
     public unsubscribe(userId : string, channel : string){
@@ -72,8 +71,6 @@ export class SubscriptionManager {
             }
         }
         console.log(this.subscriptions);
-        console.log(this.reverseSubscription)
-        
     }
 
 

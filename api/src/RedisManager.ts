@@ -30,7 +30,6 @@ export class RedisManager {
                 this.client.unsubscribe(clientId);
                 resolve(JSON.parse(dataFromEngine) as MessageFromEngine);
             });
-
             //Sending to Queue ....( to engine ultimately ) 
             this.queue.lPush("messages", JSON.stringify({ clientId , message }));
         });

@@ -1,6 +1,6 @@
 import {Router} from "express"
 import { TickerData } from "../types/db";
-import { pgClient } from "..";
+import { createPool } from "../utils";
 export const tickerRouter = Router();
 
 
@@ -15,10 +15,10 @@ tickerRouter.get('/',async (req,res) => {
                             MAX(price) AS high,
                             LAST(price,time) AS lastPrice,
                             MIN(price) AS low,
-                            SUM(quote_quantity) AS quoteVolume,
+                            SUM(quote_qty) AS quoteVolume,
                             symbol,
                             COUNT(*) AS trades,
-                            SUM(quantity) AS volume
+                            SUM(qty) AS volume
                         FROM crypto_trades
                         GROUP BY bucket,symbol
                         ORDER BY symbol,bucket DESC
@@ -37,19 +37,20 @@ tickerRouter.get('/',async (req,res) => {
                     FROM ticker_trades
                 `
     try {
+        const pgClient = createPool();
         const {rows} : {rows : TickerData[]} = await pgClient.query(query);
         const mappedTicker = rows.map(t => {
             return {
-                firstPrice: t.firstprice.toString(),
-                high: t.high.toString(),
-                lastPrice: t.lastprice.toString(),
-                low: t.low.toString(),
-                priceChange: t.pricechange.toString(),
-                priceChangePercent: t.pricechangepercent.toString(),
-                quoteVolume: t.quotevolume.toString(),
-                symbol: t.symbol,
-                trades: t.trades.toString(),
-                volume: t.volume.toString()
+                "firstPrice": t.firstprice.toString(),
+                "high": t.high.toString(),
+                "lastPrice": t.lastprice.toString(),
+                "low": t.low.toString(),
+                "priceChange": t.pricechange.toString(),
+                "priceChangePercent": t.pricechangepercent.toString(),
+                "quoteVolume": t.quotevolume.toString(),
+                "symbol": t.symbol.toString(),
+                "trades": t.trades.toString(),
+                "volume": t.volume.toString()
             }
         })
         res.json(mappedTicker)

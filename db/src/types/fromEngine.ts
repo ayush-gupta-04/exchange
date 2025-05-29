@@ -3,15 +3,14 @@ import { ORDER_STATUS } from "."
 export type MessageFromEngine =  {
     type : "CREATE_DB_TRADE",
     data : {
-        tradeId : number,
+        trade_id : number,
         time : Date,
         market : string,
         price : number,
         quantity : number,
-        quoteQuantity : number,
         is_buyer_maker : boolean,
         buyer_id : string,
-        seller_id : string
+        seller_id : string,
     }
 } | {
     type : "CREATE_DB_ORDER",

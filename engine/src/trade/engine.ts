@@ -2,6 +2,7 @@ import { RedisManager } from "../RedisManager";
 import { MessageFromApi } from "../types/fromApi";
 import { Fill, Order, OrderBook } from "./orderbook";
 import {v4 as uuid} from "uuid"
+import fs from 'fs'
 
 //this is how it was being set.
 // balances.set("1",{
@@ -17,47 +18,36 @@ export interface UserBalance {
 }
 
 export class Engine {
-    private orderbooks : OrderBook[];
-    private balances: Map<string, UserBalance>;
-
+    private orderbooks : OrderBook[] = [];
+    private balances: Map<string, UserBalance> = new Map();
 
     constructor(){
-        this.orderbooks = [new OrderBook('SOL','USDC',[],[],0,0)];
-        this.balances = new Map();
-        this.setBaseBalances();
+        let snapshot = null
+        try {
+            snapshot = fs.readFileSync("./snapshot.json");
+        } catch (e) {
+            console.log(e);
+            console.log("No snapshot found");
+        }
+
+        if (snapshot) {
+            const snapshotSnapshot = JSON.parse(snapshot.toString());
+            this.orderbooks = snapshotSnapshot.orderbooks.map((o: any) => new OrderBook(o.baseAsset,o.quoteAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice));
+            this.balances = new Map(snapshotSnapshot.balances);
+            console.log(this.orderbooks);
+            console.log(this.balances);
+        }
+        setInterval(() => {
+            this.saveSnapshot();
+        }, 1000 * 3);
     }
 
-    setBaseBalances(){
-        this.balances.set('1',{
-            ["SOL"] : {
-                available : 400,
-                locked : 0
-            },
-            ["USDC"] : {
-                available : 50000,
-                locked : 0
-            }
-        })
-        this.balances.set('2',{
-            ["SOL"] : {
-                available : 400,
-                locked : 0
-            },
-            ["USDC"] : {
-                available : 50000,
-                locked : 0
-            }
-        })
-        this.balances.set('3',{
-            ["SOL"] : {
-                available : 400,
-                locked : 0
-            },
-            ["USDC"] : {
-                available : 50000,
-                locked : 0
-            }
-        })
+    saveSnapshot() {
+        const snapshotSnapshot = {
+            orderbooks: this.orderbooks.map(o => o.getSnapshot()),
+            balances: Array.from(this.balances.entries())
+        }
+        fs.writeFileSync("./snapshot.json", JSON.stringify(snapshotSnapshot));
     }
 
     
@@ -75,14 +65,12 @@ export class Engine {
                             fills
                         }
                     });
-                } catch (e) {
+                } catch (e : any ) {
                     console.log(e);
                     RedisManager.getInstance().sendToApi(clientId, {
-                        type: "ORDER_CANCELLED",
+                        type: "ORDER_FAILED",
                         payload: {
-                            orderId: "",
-                            executedQty: 0,
-                            remainingQty: message.data.quantity
+                            message : e.message  || "Unknown error occured !" as string
                         }
                     });
                 }
@@ -146,17 +134,17 @@ export class Engine {
                         payload : {
                             orderId : cancelled_order.orderId,
                             executedQty : cancelled_order.filled,
-                            remainingQty : cancelled_order.quantity - cancelled_order.filled
+                            remainingQty : cancelled_order.quantity - cancelled_order.filled,
                         }
                     })
-                } catch (e) {
+                } catch (e : any) {
                     console.log(e)
                     RedisManager.getInstance().sendToApi(clientId , {
-                        type : "ORDER_CANCELLED",
+                        type : "CANCEL_ORDER_FAILED",
                         payload : {
-                            orderId : message.data.orderId,
                             executedQty : 0,
-                            remainingQty : 0
+                            remainingQty : 0,
+                            message : e.message  || "Unknown errror occurred!" as string
                         }
                     })
                 }
@@ -195,33 +183,95 @@ export class Engine {
                 break;
             case "ADD_MARKET" : 
                 const {baseAsset,quoteAsset} = message.data;
-                this.createOrderbook(baseAsset,quoteAsset);
-                RedisManager.getInstance().sendToApi(clientId,{
-                    type : "MARKET_ADDED",
-                    payload : {
-                        success : true,
-                        message : `${baseAsset}_${quoteAsset} Market added successfully !`
-                    }
-                })
+                try {
+                    this.createOrderbook(baseAsset,quoteAsset);
+                    RedisManager.getInstance().sendToApi(clientId,{
+                        type : "MARKET_ADDED",
+                        payload : {
+                            success : true,
+                            message : `${baseAsset}_${quoteAsset} Market added successfully !`
+                        }
+                    })
+                } catch (error) {
+                    console.log(error)
+                    RedisManager.getInstance().sendToApi(clientId,{
+                        type : "MARKET_ADDED",
+                        payload : {
+                            success : false,
+                            message : `Market exist already!`
+                        }
+                    })
+                }
+                break;
+
+            case "ADD_BOT" :
+                try {
+                    this.createBot(message.data);
+                    RedisManager.getInstance().sendToApi(clientId,{
+                        type : 'BOT_ADDED',
+                        payload : {
+                            success : true,
+                            message : "Bot added successfully!"
+                        }
+                    })
+                } catch (error) {
+                    RedisManager.getInstance().sendToApi(clientId,{
+                        type : 'BOT_ADDED',
+                        payload : {
+                            success : false,
+                            message : "Error while adding bot!"
+                        }
+                    })
+                }
             default:
                 break;
         }
     }
 
+    createBot({bot_id,baseQty,quoteQty,baseAsset,quoteAsset}: {bot_id: string;baseQty: number;quoteQty: number,baseAsset : string,quoteAsset : string}){
+         this.balances.set(bot_id , {
+            [baseAsset] : {
+                available : baseQty,
+                locked : 0
+            },
+
+            [quoteAsset] : {
+                available : quoteQty,
+                locked : 0
+            }
+         })
+    }
+
     createOrderbook(baseAsset : string,quoteAsset : string){
-        this.orderbooks.push(new OrderBook(baseAsset,quoteAsset,[],[],0,0));
-        console.log(this.orderbooks)
+        const orderbook = this.orderbooks.find((orderbook) => {
+            if(orderbook.ticker() == baseAsset+'_'+quoteAsset){
+                return orderbook
+            }else{
+                return null
+            }
+        })
+        if(!orderbook){
+            this.orderbooks.push(new OrderBook(baseAsset,quoteAsset,[],[],0,0));
+            console.log(this.orderbooks)
+        }else{
+            throw new Error('OrderBook exist !')
+        }
+        
     }
     createUser(userId : string){
         this.balances.set(userId,{
             ["SOL"] : {
-                available : 400,
+                available : 0,
                 locked : 0
             },
             ["USDC"] : {
-                available : 50000,
+                available : 20000,
                 locked : 0
             }
+        })
+        console.log({
+            userId : userId,
+            message : "User added successfully !",
         })
     }
 
@@ -268,7 +318,7 @@ export class Engine {
         this.updateBalance(userId,baseAsset,quoteAsset,side,fills);
         this.createDbOrders(order,market);
         this.updateDbOrders(fills);
-        this.createDbTrades(fills,market,userId,side);        
+        this.createDbTrades(fills,market,userId,side,order.orderId);        
         this.publishWsDepthUpdates(fills,price,side,market,orderbook);
         this.publishWsTrades(fills,userId,market);
         orderbook.cleanUp();
@@ -278,15 +328,15 @@ export class Engine {
 
     publishWsBookTickerUpdates(side : "buy" | "sell",orderbook : OrderBook,market : string){
         const {bid,ask}  = orderbook.getBestBidsAsks(side);
-        RedisManager.getInstance().publishToWs(`bookTicker@${market}`,{
-            stream : `bookTicker@${market}`,
+        RedisManager.getInstance().publishToWs(`bookTicker.${market}`,{
+            stream : `bookTicker.${market}`,
             data : {
                 e : "bookTicker",
                 s : market,
-                a : ask.price.toString(),
-                A : ask.qty.toString(),
-                b : bid.price.toString(),
-                B : bid.qty.toString()
+                a : ask.price.toFixed(2),
+                A : ask.qty.toFixed(2),
+                b : bid.price.toFixed(2),
+                B : bid.qty.toFixed(2)
             }
         })
     }
@@ -299,9 +349,9 @@ export class Engine {
                 symbol : market,
                 user_id : order.userId,
                 time : order.time,
-                price : order.price,
-                qty : order.quantity,
-                filled : order.filled,
+                price : parseFloat(order.price.toFixed(2)),
+                qty : parseFloat(order.quantity.toFixed(2)),
+                filled : parseFloat(order.filled.toFixed()),
                 status : order.status,
                 side  : order.side
             }
@@ -314,27 +364,26 @@ export class Engine {
                 type : "UPDATE_DB_ORDER",
                 data : {
                     order_id : fill.markerOrderId,
-                    qty : fill.qty,
+                    qty : parseFloat(fill.qty.toFixed()),
                     status : fill.otherOrderStatus
                 }
             })
         })
     }
 
-    createDbTrades(fills : Fill[] ,market : string, userId : string ,side : "buy" | "sell"){
+    createDbTrades(fills : Fill[] ,market : string, userId : string ,side : "buy" | "sell",orderId : string){
         fills.forEach(fill => {
             RedisManager.getInstance().sendToDbQueue("db_processor" , {
                 type : "CREATE_DB_TRADE",
                 data : {
-                    tradeId : fill.tradeId,
+                    trade_id : fill.tradeId,
                     time : new Date(),
                     market : market,
-                    price : fill.price,
-                    quantity : fill.qty,
-                    quoteQuantity : (fill.qty * fill.price),
+                    price : parseFloat(fill.price.toFixed(2)),
+                    quantity : parseFloat(fill.qty.toFixed(2)),
                     is_buyer_maker : fill.otherUserId == userId,
                     buyer_id : side == "buy" ?userId:fill.otherUserId,
-                    seller_id : side == 'sell'?userId:fill.otherUserId
+                    seller_id : side == 'sell'?userId:fill.otherUserId,
                 }
             })
         })
@@ -342,14 +391,14 @@ export class Engine {
 
     publishWsTrades(fills: Fill[], userId: string, market: string) {
         fills.forEach(fill => {
-            RedisManager.getInstance().publishToWs(`trade@${market}`, {
-                stream: `trade@${market}`,
+            RedisManager.getInstance().publishToWs(`trade.${market}`, {
+                stream: `trade.${market}`,
                 data: {
                     e: "trade",
                     t: fill.tradeId,
                     m: fill.otherUserId === userId,
-                    p: fill.price,
-                    q: fill.qty,
+                    p: parseFloat(fill.price.toFixed(2)),
+                    q: parseFloat(fill.qty.toFixed(2)),
                     s: market,
                     T : new Date()
                 }
@@ -365,9 +414,9 @@ export class Engine {
             const price_fills = fills.map(f => f.price)
             //depth m se vo saari prices and unki quantities ko filter kro jo prices fills m h .. kyunki unhi prices m changes aaya hoga.
             const updatedAsks = depth.asks.filter(a => price_fills.includes(Number(a[0])))
-            const updatedBids = depth.bids.find(b => Number(b[0]) === price);
-            RedisManager.getInstance().publishToWs(`depth@${market}` , {
-                stream : `depth@${market}`,
+            const updatedBids  = depth.bids.find(b => Number(b[0]) === price)
+            RedisManager.getInstance().publishToWs(`depth.${market}` , {
+                stream : `depth.${market}`,
                 data : {
                     a : updatedAsks,
                     b : updatedBids? [updatedBids] : [],
@@ -379,8 +428,8 @@ export class Engine {
             //depth m se vo saari prices and unki quantities ko filter kro jo prices fills m h .. kyunki unhi prices m changes aaya hoga.
             const updatedBids = depth.bids.filter(a => price_fills.includes(Number(a[0])))
             const updatedAsks = depth.asks.find(b => Number(b[0]) === price);
-            RedisManager.getInstance().publishToWs(`depth@${market}` , {
-                stream : `depth@${market}`,
+            RedisManager.getInstance().publishToWs(`depth.${market}` , {
+                stream : `depth.${market}`,
                 data : {
                     a : updatedAsks ? [updatedAsks] : [],
                     b : updatedBids,
@@ -409,7 +458,7 @@ export class Engine {
                     user_balance[quoteAsset].locked = locked_QuoteAsset + (price * quantity);
                 }
             }else{
-                throw new Error("No balance found !")
+                throw new Error("No user found !")
             }
         }else{
             const user_balance = this.balances.get(userId);
@@ -423,7 +472,7 @@ export class Engine {
                     user_balance[baseAsset].locked = locked_BaseAsset + (quantity);
                 }
             }else{
-                throw new Error("No balance found !")
+                throw new Error("No user found !")
             }
         }
     }

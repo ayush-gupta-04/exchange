@@ -5,9 +5,19 @@
   --color-base-background-light : #14151b;
   --color-base-background-light2 : #202127;
   --color-base-hover : #202127;
-  --color-base-text-white : #EDEBEF;
+  --color-base-text-white : #e2e1e3;
+  --color-base-dim-text : #75798A;
+  --color-accent-blue : #4c94ff;
+  --color-accent-green : #00c278;
+  --color-accent-red : #E33E3F
 }
 * {
   scrollbar-color: #22232d #0e0f14; /* thumb color and track color */
   scrollbar-width: thin; /* makes the scrollbar smaller */
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }

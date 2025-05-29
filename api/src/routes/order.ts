@@ -5,21 +5,43 @@ export const orderRouter = Router();
 
 orderRouter.post('/',async (req,res) => {
     const { market, price, quantity, side, userId } = req.body;
-    const response = await RedisManager.getInstance().sendAndAwait({
-        type : "CREATE_ORDER",
-        data : {
-            market,
-            price,
-            quantity,
-            side,
-            userId
+    if(!market || !price || !quantity || !side || !userId){
+        res.json({
+            success : false,
+            data : {
+                mesage : "All fields required!"
+            }
+        })
+    }
+    else{
+        const response = await RedisManager.getInstance().sendAndAwait({
+            type : "CREATE_ORDER",
+            data : {
+                market,
+                price,
+                quantity,
+                side,
+                userId
+            }
+        });
+        if(response.type == 'ORDER_PLACED'){
+            res.json({
+                success : true,
+                data : response.payload
+            })
         }
-    });
-    res.json(response.payload);
+        else if(response.type == 'ORDER_FAILED'){
+            res.json({
+                success : false,
+                data : response.payload
+            })
+        }
+    }
 })
 
 orderRouter.get('/',async (req,res) => {
-    const {market , userId} = req.body;
+    const market = req.query.market as string;
+    const userId = req.query.userId as string;
     const response = await RedisManager.getInstance().sendAndAwait({
         type : "GET_OPEN_ORDERS",
         data : {
@@ -40,5 +62,16 @@ orderRouter.delete('/',async (req,res) => {
             orderId : orderId
         }
     })
-    res.json(response.payload)
+    if(response.type == 'ORDER_CANCELLED'){
+        res.json({
+            success : true,
+            data : response.payload
+        })
+    }else if (response.type == 'CANCEL_ORDER_FAILED'){
+        res.json({
+            success : false,
+            data : response.payload
+        })
+    }
+    
 })
