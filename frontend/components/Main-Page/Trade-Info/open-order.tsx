@@ -7,7 +7,7 @@ import axios from "axios"
 import { open } from "node:inspector/promises";
 import { use, useEffect, useState } from "react"
 
-export default function OpenOrder({userId,market} : {userId : string | undefined,market : string}){
+export default function OpenOrder({userId,market,type} : {userId : string | undefined,market : string,type : 'user' | 'guest'}){
     const[openOrders,setOpenOrders] = useState<OpenOrderType[]>([]);
     const[loading,setLoading] = useState(false);
     const[delLoader,setDelLoader] = useState(false);
@@ -32,14 +32,16 @@ export default function OpenOrder({userId,market} : {userId : string | undefined
         }
     }|null>(null)
     useEffect(() => {
-        setLoading(true);
-        axios.get(`http://localhost:3001/api/v1/order?market=${market}&userId=${userId}`).then((res) => {
-            setOpenOrders([...res.data.asks,...res.data.bids]);
-            setLoading(false)
-        }).catch((e) => {
-            console.log(e);
-            setLoading(false);
-        })
+        if(type == 'user'){
+            setLoading(true);
+            axios.get(`http://localhost:3001/api/v1/order?market=${market}&userId=${userId}`).then((res) => {
+                setOpenOrders([...res.data.asks,...res.data.bids]);
+                setLoading(false)
+            }).catch((e) => {
+                console.log(e);
+                setLoading(false);
+            })
+        }
         
     },[])
     function onClickHandler(orderId : string,market :string){

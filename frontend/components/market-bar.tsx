@@ -3,12 +3,11 @@
 import { getTicker } from "@/utils/http-clients";
 import { SignalingManager } from "@/utils/Signalling-Manager";
 import { Ticker, Trade } from "@/utils/types";
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 export default function MarketBar({market,userId} : {market : string,userId : string | undefined}){
     const[lastPrice,setLastPrice] = useState(0);
     const[tickerData,setTickerData] = useState<Ticker>();
-    const prevPriceRef = useRef<number | null>(null);
 
     useEffect(() => {
         SignalingManager.getInstance(userId || "").registerCallback('trade',(data : Trade) => {

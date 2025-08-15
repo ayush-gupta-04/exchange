@@ -21,6 +21,8 @@ accountRouter.get('/',async (req ,res) => {
 })
 
 
+
+//this will be to add balance.
 accountRouter.post('/',async (req,res) => {
     const {user_id,baseAsset,quoteAsset} = req.body;
     const response = await RedisManager.getInstance().sendAndAwait({

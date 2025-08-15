@@ -23,7 +23,7 @@ export default async function TradeMarket({params} : {params : Promise<{market :
                     </div>
                 </div>
                 <div className="min-h-[356px] rounded-lg">
-                    <TradeInfo userId = {session?.id} market = {market}></TradeInfo>
+                    <TradeInfo userId = {session?.id} market = {market} type= {session?.type!}></TradeInfo>
                 </div>
             </div>
             <div className="w-[332px] bg-base-background-light h-fit">

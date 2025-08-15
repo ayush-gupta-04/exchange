@@ -10,15 +10,20 @@ export async function loginAccount(data : LoginFormat) : Promise<{success : bool
         try {
             const client = createPool();
             const user = await client.query(`
-                SELECT user_id
+                SELECT user_id,can_trade
                 FROM crypto_users
                 WHERE email = $1 AND password = $2
             `,[data.email,data.password]);
             if(!user.rowCount || user.rowCount == 0){
-                console.log("hello")
                 return {
                     success : false,
                     message : "Email or Password wrong!"
+                }
+            }
+            if(user.rows[0].can_trade == false){
+                return {
+                    success : false,
+                    message : "Please Wait till we verify your Account!"
                 }
             }
             try {

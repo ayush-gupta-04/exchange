@@ -13,7 +13,7 @@ import { historyRouter } from "./routes/history";
 import { botRouter } from "./routes/bot";
 
 const app = express();
-app.use(cors())
+app.use(cors());
 app.use(express.json());
 
 app.use('/api/v1/depth', depthRouter)
@@ -30,7 +30,7 @@ app.use('/api/v1/bot',botRouter)
 
 app.get('/',(req,res) => {
     const a = req.query.a;
-    if(a && parseInt(a.toString())== 1){
+    if(a && parseInt(a.toString()) == 1){
         res.status(400).json({error : "errro!"})
         return;
     }

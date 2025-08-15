@@ -6,7 +6,7 @@ import FillHistory from "./Main-Page/Trade-Info/fill-history";
 import OpenOrder from "./Main-Page/Trade-Info/open-order";
 import OrderHistory from "./Main-Page/Trade-Info/order-history";
 
-export default function TradeInfo({userId , market} : {userId : string | undefined , market : string}){
+export default function TradeInfo({userId , market,type} : {userId : string | undefined , market : string,type : 'user' | 'guest'}){
     const[info,setInfo] = useState<'fill_history' | 'open_order' | 'order_history' | 'balances'>('fill_history');
 
     return (
@@ -22,13 +22,13 @@ export default function TradeInfo({userId , market} : {userId : string | undefin
                     <Balances></Balances>
                 }
                 {info == 'fill_history' && 
-                    <FillHistory userId = {userId} market = {market}></FillHistory>
+                    <FillHistory userId = {userId} market = {market} type = {type}></FillHistory>
                 }
                 {info == 'open_order' && 
-                    <OpenOrder userId = {userId} market = {market}></OpenOrder>
+                    <OpenOrder userId = {userId} market = {market} type = {type}></OpenOrder>
                 }
                 {info == 'order_history' && 
-                    <OrderHistory userId = {userId} market = {market}></OrderHistory>
+                    <OrderHistory userId = {userId} market = {market} type = {type}></OrderHistory>
                 }
             </div>
         </div>

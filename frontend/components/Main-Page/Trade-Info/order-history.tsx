@@ -3,18 +3,21 @@ import { OrderHisoryType } from "@/utils/types";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
-export default function OrderHistory({userId,market} : {userId : string | undefined,market : string}){
+export default function OrderHistory({userId,market,type} : {userId : string | undefined,market : string,type : 'user' | 'guest'}){
     const[orderHistory,setOrderHistory] = useState<OrderHisoryType[]>([]);
     const[loading,setLoading] = useState(false);
     useEffect(() => {
-        setLoading(true);
-        axios.get(`http://localhost:3001/api/v1/history/orders?symbol=${market}&userId=${userId}&limit=100`).then((res) => {
-            setOrderHistory([...res.data]);
-            setLoading(false)
-        }).catch((e) => {
-            console.log(e);
-            setLoading(false);
-        })
+        if(type == 'user'){
+            setLoading(true);
+            axios.get(`http://localhost:3001/api/v1/history/orders?symbol=${market}&userId=${userId}&limit=100`).then((res) => {
+                setOrderHistory([...res.data]);
+                setLoading(false)
+            }).catch((e) => {
+                console.log(e);
+                setLoading(false);
+            })
+        }
+        
         
     },[])
     console.log(orderHistory)

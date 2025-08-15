@@ -26,15 +26,14 @@ export class Engine {
         try {
             snapshot = fs.readFileSync("./snapshot.json");
         } catch (e) {
-            console.log(e);
             console.log("No snapshot found");
         }
 
         if (snapshot) {
             const snapshotSnapshot = JSON.parse(snapshot.toString());
-            this.orderbooks = snapshotSnapshot.orderbooks.map((o: any) => new OrderBook(o.baseAsset,o.quoteAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice));
+            this.orderbooks = snapshotSnapshot.orderbooks.map((o: any) => {console.log(o.baseAsset + "_" + o.quoteAsset) ; return new OrderBook(o.baseAsset,o.quoteAsset, o.bids, o.asks, o.lastTradeId, o.currentPrice)});
             this.balances = new Map(snapshotSnapshot.balances);
-            console.log(this.orderbooks);
+            console.log("Restored Orderbook!");
             console.log(this.balances);
         }
         setInterval(() => {
@@ -193,7 +192,7 @@ export class Engine {
                         }
                     })
                 } catch (error) {
-                    console.log(error)
+                    console.log(error);
                     RedisManager.getInstance().sendToApi(clientId,{
                         type : "MARKET_ADDED",
                         payload : {
@@ -214,6 +213,8 @@ export class Engine {
                             message : "Bot added successfully!"
                         }
                     })
+                    console.log("bot Added Successfully !");
+                    console.log(this.balances);
                 } catch (error) {
                     RedisManager.getInstance().sendToApi(clientId,{
                         type : 'BOT_ADDED',

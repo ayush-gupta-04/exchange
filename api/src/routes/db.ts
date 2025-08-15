@@ -21,7 +21,8 @@ dbRouter.post('/initialise',async (req,res) => {
         city           TEXT,
         phone          CHAR(10),
         pincode        CHAR(6),
-        verified       BOOLEAN   DEFAULT false
+        verified       BOOLEAN   DEFAULT false,
+        can_trade       BOOLEAN   DEFAULT false
     )`
 
     const otp_table_query = `

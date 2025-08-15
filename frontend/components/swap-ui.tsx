@@ -2,13 +2,7 @@
 
 import { FormEvent, useState } from "react"
 import ClassicBuySellButton from "./small-components/classic-buy-sell-button";
-import { BackendResponse } from "@/utils/types";
-import Response from "./response";
 import axios from "axios";
-import { useSession } from "next-auth/react";
-import { NEXT_AUTH } from "@/utils/auth";
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getUser } from "@/app/action/getUser";
 import DoneIcon from "@/icons/done";
 import BigErrorIcon from "@/icons/bigerror";
@@ -26,7 +20,7 @@ export default function SwapUI({market} : {market : string}){
                     price: number,
                     qty: number,
                     tradeId: number
-                }[]
+            }[]
         }
     } | {
         success : false,
@@ -42,7 +36,20 @@ export default function SwapUI({market} : {market : string}){
     async function placeOrder(event : FormEvent<HTMLFormElement>){
         event.preventDefault();
         setLoading(true);
-        const session = await getUser()
+        const session = await getUser();
+        if(session?.type == 'guest'){
+            setResponse({
+                success : false,
+                data : {
+                    message : "Please Login To Make Order!"
+                }
+            })
+            setTimeout(() => {
+                setResponse(null)
+            }, 4000);
+            setLoading(false);
+            return;
+        }
         const res = await axios.post('http://localhost:3001/api/v1/order',{
             market : market, 
             price : parseFloat(input.price),
@@ -50,8 +57,8 @@ export default function SwapUI({market} : {market : string}){
             side : side,
             userId : session?.id
         })
-        setLoading(false)
-        setResponse(res.data)
+        setLoading(false);
+        setResponse(res.data);
         setTimeout(() => {
             setResponse(null)
         }, 4000);

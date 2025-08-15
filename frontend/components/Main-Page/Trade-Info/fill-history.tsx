@@ -1,25 +1,28 @@
 'use client'
-import { fillsHistoryType, OrderHisoryType } from "@/utils/types";
+import { fillsHistoryType } from "@/utils/types";
 import axios from "axios";
 import { useEffect, useState } from "react";
 
 
-export default function FillHistory({userId,market} : {userId : string | undefined,market : string}){
+export default function FillHistory({userId,market , type } : {userId : string | undefined,market : string, type : 'user' | 'guest'}){
     const[fillsHistory,setFillsHistory] = useState<fillsHistoryType[]>([]);
     const[loading,setLoading] = useState(false);
     useEffect(() => {
-        setLoading(true);
-        axios.get(`http://localhost:3001/api/v1/history/fills?symbol=${market}&userId=${userId}&limit=100`).then((res) => {
-            console.log(res.data)
-            setFillsHistory([...res.data]);
-            setLoading(false)
-        }).catch((e) => {
-            console.log(e);
-            setLoading(false);
-        })
+        if(type == 'user'){
+            setLoading(true);
+            axios.get(`http://localhost:3001/api/v1/history/fills?symbol=${market}&userId=${userId}&limit=100`).then((res) => {
+                console.log(res.data)
+                setFillsHistory([...res.data]);
+                setLoading(false)
+            }).catch((e) => {
+                console.log(e);
+                setLoading(false);
+            })
+        }
+        console.log("gutest is there")
         
     },[])
-    console.log(fillsHistory)
+    console.log(fillsHistory);
     return (
         <div className="flex-1 flex flex-col">
             {!fillsHistory || fillsHistory.length == 0 && 
@@ -48,7 +51,7 @@ export default function FillHistory({userId,market} : {userId : string | undefin
                         <div className="font-semibold text-base-text-white text-start text-sm">{order.is_buyer_maker ? "Maker" : "Taker"}</div>
                         <div className="font-semibold text-base-text-white text-end text-sm">{order.price}</div>
                         <div className="font-semibold text-base-text-white text-end text-sm">{order.qty}</div>
-                        <div className="font-semibold text-base-text-white text-end text-sm">{order.price*order.qty}</div>
+                        <div className="font-semibold text-base-text-white text-end text-sm">{(order.price*order.qty).toFixed(2)}</div>
                         <div className="font-semibold text-base-text-white text-end text-sm flex flex-col gap-1">
                             <div>{date.toLocaleDateString()}</div>
                             <div>{date.toLocaleTimeString()}</div>

@@ -2,8 +2,7 @@
 import { SignupFormat, SignupSchema } from "@/utils/zod";
 import {createPool} from '@/utils/db-client'
 import { generateOTP, generateOtpExpiry, generateUUID } from "@/utils/functions";
-import { sendMail } from "@/utils/mail-Trap";
-import axios from "axios";
+import { sendMail, sendMailToAdmin } from "@/utils/mail-Trap";
 
 export async function createAccount(data : SignupFormat) : Promise<{success : boolean, message : string, token? : string }> {
     const format = SignupSchema.safeParse(data);
@@ -44,7 +43,12 @@ export async function createAccount(data : SignupFormat) : Promise<{success : bo
                     await client.query("COMMIT");
                     
                     //send email
-                    await sendMail({email : data.email,otp})
+                    await sendMail({email : data.email,otp});
+
+
+                    //send the mail to admin to add the user to the engine.
+                    sendMailToAdmin({email : data.email});
+                    
                     return {
                         success : true,
                         message : "Otp sent to email!",
